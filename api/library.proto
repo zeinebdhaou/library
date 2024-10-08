@@ -1,0 +1,79 @@
+syntax = "proto3";
+option go_package = "github.com/Horizon-School-of-Digital-Technologies/library/api";
+package library;
+
+// Book message represents a book entity in the library
+message Book {
+  int32 id = 1;               // Unique identifier for the book
+  string title = 2;            // Title of the book
+  string author = 3;           // Author of the book
+  string isbn = 4;             // ISBN number
+  int32 publication_year = 5;  // Year the book was published
+  string genre = 6;            // Genre of the book
+}
+
+// Request to create a new book
+message CreateBookRequest {
+  Book book = 1;               // Book data to be created
+}
+
+// Response after creating a book
+message CreateBookResponse {
+  Book book = 1;               // The newly created book with ID
+}
+
+// Request to get a specific book by ID
+message GetBookRequest {
+  int32 id = 1;                // ID of the book to retrieve
+}
+
+// Response with the book details
+message GetBookResponse {
+  Book book = 1;               // The retrieved book
+}
+
+// Request to update a book
+message UpdateBookRequest {
+  Book book = 1;               // Updated book data, including ID
+}
+
+// Response after updating the book
+message UpdateBookResponse {
+  Book book = 1;               // The updated book
+}
+
+// Request to delete a book
+message DeleteBookRequest {
+  int32 id = 1;                // ID of the book to delete
+}
+
+// Response after deleting the book
+message DeleteBookResponse {
+  bool success = 1;            // Whether the deletion was successful
+}
+
+// Request to list all books
+message ListBooksRequest {}
+
+// Response containing a list of books
+message ListBooksResponse {
+  repeated Book books = 1;     // List of all books
+}
+
+// The Library service defines the CRUD operations for books
+service LibraryService {
+  // Create a new book
+  rpc CreateBook(CreateBookRequest) returns (CreateBookResponse);
+
+  // Get details of a book by ID
+  rpc GetBook(GetBookRequest) returns (GetBookResponse);
+
+  // Update an existing book
+  rpc UpdateBook(UpdateBookRequest) returns (UpdateBookResponse);
+
+  // Delete a book by ID
+  rpc DeleteBook(DeleteBookRequest) returns (DeleteBookResponse);
+
+  // List all books
+  rpc ListBooks(ListBooksRequest) returns (ListBooksResponse);
+}
