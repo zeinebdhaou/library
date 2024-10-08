@@ -10,27 +10,37 @@ import (
 
 // BookStore struct to hold the in-memory storage
 type BookStore struct {
-	Books map[int32]*pb.Book
+	books map[int32]*pb.Book
 	mu    sync.Mutex // Mutex to handle concurrent access
 }
 
 // LibraryServer is used to implement the LibraryService
 type LibraryServer struct {
 	pb.UnimplementedLibraryServiceServer
-	Store *BookStore
+	store *BookStore
+}
+
+// NewLibraryServer Create a new LibraryServer with the BookStore
+
+func NewLibraryServer() *LibraryServer {
+	return &LibraryServer{
+		store: &BookStore{
+			books: make(map[int32]*pb.Book),
+		},
+	}
 }
 
 // CreateBook implementation
 func (s *LibraryServer) CreateBook(ctx context.Context, req *pb.CreateBookRequest) (*pb.CreateBookResponse, error) {
-	s.Store.mu.Lock()
-	defer s.Store.mu.Unlock()
+	s.store.mu.Lock()
+	defer s.store.mu.Unlock()
 
-	if _, exists := s.Store.Books[req.Book.Id]; exists {
+	if _, exists := s.store.books[req.Book.Id]; exists {
 		return nil, status.Error(400, "book with the given ID already exists")
 	}
 
 	// Add the book to the store
-	s.Store.Books[req.Book.Id] = req.Book
+	s.store.books[req.Book.Id] = req.Book
 	log.Printf("Book added: %v", req.Book)
 
 	return &pb.CreateBookResponse{Book: req.Book}, nil
@@ -38,10 +48,10 @@ func (s *LibraryServer) CreateBook(ctx context.Context, req *pb.CreateBookReques
 
 // GetBook implementation
 func (s *LibraryServer) GetBook(ctx context.Context, req *pb.GetBookRequest) (*pb.GetBookResponse, error) {
-	s.Store.mu.Lock()
-	defer s.Store.mu.Unlock()
+	s.store.mu.Lock()
+	defer s.store.mu.Unlock()
 
-	book, exists := s.Store.Books[req.Id]
+	book, exists := s.store.books[req.Id]
 	if !exists {
 		return nil, status.Error(404, "book not found")
 	}
@@ -51,15 +61,15 @@ func (s *LibraryServer) GetBook(ctx context.Context, req *pb.GetBookRequest) (*p
 
 // UpdateBook implementation
 func (s *LibraryServer) UpdateBook(ctx context.Context, req *pb.UpdateBookRequest) (*pb.UpdateBookResponse, error) {
-	s.Store.mu.Lock()
-	defer s.Store.mu.Unlock()
+	s.store.mu.Lock()
+	defer s.store.mu.Unlock()
 
-	if _, exists := s.Store.Books[req.Book.Id]; !exists {
+	if _, exists := s.store.books[req.Book.Id]; !exists {
 		return nil, status.Error(404, "book not found")
 	}
 
 	// Update the book
-	s.Store.Books[req.Book.Id] = req.Book
+	s.store.books[req.Book.Id] = req.Book
 	log.Printf("Book updated: %v", req.Book)
 
 	return &pb.UpdateBookResponse{Book: req.Book}, nil
@@ -67,15 +77,15 @@ func (s *LibraryServer) UpdateBook(ctx context.Context, req *pb.UpdateBookReques
 
 // DeleteBook implementation
 func (s *LibraryServer) DeleteBook(ctx context.Context, req *pb.DeleteBookRequest) (*pb.DeleteBookResponse, error) {
-	s.Store.mu.Lock()
-	defer s.Store.mu.Unlock()
+	s.store.mu.Lock()
+	defer s.store.mu.Unlock()
 
-	if _, exists := s.Store.Books[req.Id]; !exists {
+	if _, exists := s.store.books[req.Id]; !exists {
 		return nil, status.Error(404, "book not found")
 	}
 
 	// Delete the book
-	delete(s.Store.Books, req.Id)
+	delete(s.store.books, req.Id)
 	log.Printf("Book deleted: %v", req.Id)
 
 	return &pb.DeleteBookResponse{Success: true}, nil
@@ -83,11 +93,11 @@ func (s *LibraryServer) DeleteBook(ctx context.Context, req *pb.DeleteBookReques
 
 // ListBooks implementation
 func (s *LibraryServer) ListBooks(ctx context.Context, req *pb.ListBooksRequest) (*pb.ListBooksResponse, error) {
-	s.Store.mu.Lock()
-	defer s.Store.mu.Unlock()
+	s.store.mu.Lock()
+	defer s.store.mu.Unlock()
 
 	var books []*pb.Book
-	for _, book := range s.Store.Books {
+	for _, book := range s.store.books {
 		books = append(books, book)
 	}
 

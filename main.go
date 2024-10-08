@@ -89,15 +89,8 @@ func main() {
 	// Expose Prometheus metrics
 	exposePrometheusMetrics()
 
-	// Create a BookStore
-	bookStore := &sv.BookStore{
-		Books: make(map[int32]*pb.Book),
-	}
-
-	// Create a new LibraryServer with the BookStore
-	server := &sv.LibraryServer{
-		Store: bookStore,
-	}
+	// Create a new LibraryServer
+	server := sv.NewLibraryServer()
 
 	// Create a new gRPC server with the Prometheus interceptor
 	grpcServer := grpc.NewServer(
