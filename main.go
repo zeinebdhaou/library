@@ -2,87 +2,128 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net"
+	"sync"
 
 	pb "github.com/Horizon-School-of-Digital-Technologies/library/api" // Replace with the actual import path of the generated protobuf files
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
-// server is used to implement the LibraryService
-type server struct {
+// BookStore struct to hold the in-memory storage
+type BookStore struct {
+	books map[int32]*pb.Book
+	mu    sync.Mutex // Mutex to handle concurrent access
+}
+
+// LibraryServer is used to implement the LibraryService
+type LibraryServer struct {
 	pb.UnimplementedLibraryServiceServer
+	store *BookStore
 }
 
-// Implement the methods for LibraryService (CRUD Operations)
+// CreateBook implementation
+func (s *LibraryServer) CreateBook(ctx context.Context, req *pb.CreateBookRequest) (*pb.CreateBookResponse, error) {
+	s.store.mu.Lock()
+	defer s.store.mu.Unlock()
 
-// CreateBook implements the CreateBook method of LibraryService
-func (s *server) CreateBook(ctx context.Context, req *pb.CreateBookRequest) (*pb.CreateBookResponse, error) {
-	// Business logic to create a book in the system
-	// For now, return the same book back as a placeholder
-	return &pb.CreateBookResponse{
-		Book: req.Book,
-	}, nil
-}
-
-// GetBook implements the GetBook method of LibraryService
-func (s *server) GetBook(ctx context.Context, req *pb.GetBookRequest) (*pb.GetBookResponse, error) {
-	// Logic to retrieve a book by ID
-	// Here, we just return a dummy book for demonstration purposes
-	book := &pb.Book{
-		Id:              req.GetId(),
-		Title:           "Sample Book",
-		Author:          "John Doe",
-		Isbn:            "123456789",
-		PublicationYear: 2021,
-		Genre:           "Fiction",
+	if _, exists := s.store.books[req.Book.Id]; exists {
+		return nil, errors.New("book with the given ID already exists")
 	}
+
+	// Add the book to the store
+	s.store.books[req.Book.Id] = req.Book
+	log.Printf("Book added: %v", req.Book)
+
+	return &pb.CreateBookResponse{Book: req.Book}, nil
+}
+
+// GetBook implementation
+func (s *LibraryServer) GetBook(ctx context.Context, req *pb.GetBookRequest) (*pb.GetBookResponse, error) {
+	s.store.mu.Lock()
+	defer s.store.mu.Unlock()
+
+	book, exists := s.store.books[req.Id]
+	if !exists {
+		return nil, errors.New("book not found")
+	}
+
 	return &pb.GetBookResponse{Book: book}, nil
 }
 
-// UpdateBook implements the UpdateBook method of LibraryService
-func (s *server) UpdateBook(ctx context.Context, req *pb.UpdateBookRequest) (*pb.UpdateBookResponse, error) {
-	// Logic to update a book
-	return &pb.UpdateBookResponse{
-		Book: req.Book,
-	}, nil
+// UpdateBook implementation
+func (s *LibraryServer) UpdateBook(ctx context.Context, req *pb.UpdateBookRequest) (*pb.UpdateBookResponse, error) {
+	s.store.mu.Lock()
+	defer s.store.mu.Unlock()
+
+	if _, exists := s.store.books[req.Book.Id]; !exists {
+		return nil, errors.New("book not found")
+	}
+
+	// Update the book
+	s.store.books[req.Book.Id] = req.Book
+	log.Printf("Book updated: %v", req.Book)
+
+	return &pb.UpdateBookResponse{Book: req.Book}, nil
 }
 
-// DeleteBook implements the DeleteBook method of LibraryService
-func (s *server) DeleteBook(ctx context.Context, req *pb.DeleteBookRequest) (*pb.DeleteBookResponse, error) {
-	// Logic to delete a book
+// DeleteBook implementation
+func (s *LibraryServer) DeleteBook(ctx context.Context, req *pb.DeleteBookRequest) (*pb.DeleteBookResponse, error) {
+	s.store.mu.Lock()
+	defer s.store.mu.Unlock()
+
+	if _, exists := s.store.books[req.Id]; !exists {
+		return nil, errors.New("book not found")
+	}
+
+	// Delete the book
+	delete(s.store.books, req.Id)
+	log.Printf("Book deleted: %v", req.Id)
+
 	return &pb.DeleteBookResponse{Success: true}, nil
 }
 
-// ListBooks implements the ListBooks method of LibraryService
-func (s *server) ListBooks(ctx context.Context, req *pb.ListBooksRequest) (*pb.ListBooksResponse, error) {
-	// Return a list of dummy books for demonstration
-	books := []*pb.Book{
-		{Id: 1, Title: "Book One", Author: "Author A", Isbn: "1111", PublicationYear: 2020, Genre: "Sci-Fi"},
-		{Id: 2, Title: "Book Two", Author: "Author B", Isbn: "2222", PublicationYear: 2019, Genre: "Fantasy"},
+// ListBooks implementation
+func (s *LibraryServer) ListBooks(ctx context.Context, req *pb.ListBooksRequest) (*pb.ListBooksResponse, error) {
+	s.store.mu.Lock()
+	defer s.store.mu.Unlock()
+
+	var books []*pb.Book
+	for _, book := range s.store.books {
+		books = append(books, book)
 	}
+
 	return &pb.ListBooksResponse{Books: books}, nil
 }
 
+// Main function to start the server
 func main() {
-	// Listen on a TCP port for gRPC
+	// Create a BookStore
+	bookStore := &BookStore{
+		books: make(map[int32]*pb.Book),
+	}
+
+	// Create a new LibraryServer with the BookStore
+	server := &LibraryServer{
+		store: bookStore,
+	}
+
+	// Create a new gRPC server
+	grpcServer := grpc.NewServer()
+
+	// Register the LibraryServer with the gRPC server
+	pb.RegisterLibraryServiceServer(grpcServer, server)
+
+	// Listen on a TCP port
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	// Create a new gRPC libraryServer
-	grpcServer := grpc.NewServer()
+	log.Printf("Server is listening on port :50051")
 
-	// Register the LibraryService libraryServer with gRPC
-	pb.RegisterLibraryServiceServer(grpcServer, &server{})
-
-	// Enable reflection for gRPC CLI and debugging tools
-	reflection.Register(grpcServer)
-
-	// Start the libraryServer
-	log.Println("gRPC libraryServer listening on port 50051...")
+	// Start serving
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}
