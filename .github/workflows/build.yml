@@ -5,6 +5,9 @@ on:
     branches:
       - main # Change this to your main branch if different
   workflow_dispatch: # Allows manual triggering of the workflow
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: horizon-school-of-digital-technologies/library
 
 jobs:
   build:
