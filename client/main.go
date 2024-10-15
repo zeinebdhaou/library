@@ -91,6 +91,16 @@ func main() {
 	defer conn.Close()
 
 	client := pb.NewLibraryServiceClient(conn)
+	//
+	//b1 := &pb.Book{
+	//	Id:              1,
+	//	Title:           "Test book",
+	//	Author:          "Mohamed",
+	//	Isbn:            "someISBN",
+	//	PublicationYear: 2024, // Random year between 1900 and 2023
+	//	Genre:           "Fiction",
+	//}
+	//_ , err = client.CreateBook(context.Background(), &pb.CreateBookRequest{Book: b1})
 
 	var wg sync.WaitGroup
 	for i := 0; i < 5; i++ { // Number of concurrent clients
