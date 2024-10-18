@@ -12,17 +12,18 @@ RUN go mod download
 COPY . .
 
 # Build the gRPC server
-RUN CGO_ENABLED=0 GOOS=linux go build -o server ./main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o main ./main.go
 
+RUN ls .
 # Use a minimal base image to reduce the final image size
 FROM alpine:latest
 
 # Copy the compiled binary from the builder stage
-COPY --from=builder /app/server .
+COPY --from=builder /app/main .
 
 # Expose the port on which the server will run
 EXPOSE 50051
 EXPOSE 2112
 
 # Command to run the server when the container starts
-CMD ["./server"]
+CMD ["./main"]
