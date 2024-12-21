@@ -5,6 +5,7 @@ on:
     branches:
       - main # Change this to your main branch if different
   workflow_dispatch: # Allows manual triggering of the workflow
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -28,13 +29,17 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value={{date 'YYYYMMDD-HHmmss'}}
+            type=raw,value=${{ github.sha }}
+          labels: |
+            version=${{ github.sha }}
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v2
         with:
