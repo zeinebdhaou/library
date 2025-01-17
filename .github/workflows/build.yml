@@ -4,7 +4,6 @@ on:
   push:
     branches: ['main']
 
-
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -13,7 +12,7 @@ jobs:
   build-and-push-image:
     runs-on: ubuntu-latest
     permissions:
-      contents: write 
+      contents: write
       packages: write
       deployments: write
 
